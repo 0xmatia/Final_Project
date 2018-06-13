@@ -1,6 +1,5 @@
 from scapy.layers.inet import *
 from scapy.sendrecv import *
-from uuid import getnode as get_mac
 import requests
 import socket
 
@@ -12,8 +11,6 @@ MACHINE_IP = ""
 
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
-my_mac = ':'.join(("%012X" % get_mac())[i:i + 2] for i in range(0, 12, 2))  # getting the mac of the interface:
-
 
 # https://stackoverflow.com/questions/159137/getting-mac-address
 
@@ -45,16 +42,22 @@ def process_packet(packet):
     :return: None
     """
     #  find packet type:
+
+    temp_dict = {}
     if TCP in packet:
         p_type = packet[TCP]
     else:
         p_type = packet[UDP]
-    print(str(packet[IP].src) + ":" + str(p_type.sport) + " ==> " + str(packet[IP].dst) + ":" + str(p_type.dport))
-    temp_dict = {"ip": packet[IP].src, "country": ""}
-    if str(packet[Ether].src).upper() == str(my_mac):  # checking if the packet from my computer
+    # find the IP of the server
+    if packet[IP].src == MACHINE_IP:
+        packet_dst = packet[IP].dst
         temp_dict["outgoing"] = True
     else:
+        packet_dst = packet[IP].src
         temp_dict["outgoing"] = False
+    print(str(packet[IP].src) + ":" + str(p_type.sport) + " ==> " + str(packet[IP].dst) + ":" + str(p_type.dport))
+
+    temp_dict["ip"] = packet_dst
 
     temp_dict["dport"] = p_type.dport
     temp_dict["size"] = len(packet)
@@ -70,7 +73,7 @@ def init():
     print("The IP of the boss: " + BOSS_IP)
     print("The port: " + str(SERVER_PORT))
     print("The number of packets per cycle: " + str(NUM_OF_PACKETS))
-    print("You can modify these values in the constants area. Continue?y/n")
+    print("You can modify these values in the constants area. Continue? y/n")
     choice = input()
     if choice == "n":
         quit()
@@ -87,6 +90,9 @@ def get_ip_location():
             print(html)
             if "fail" not in html.values():  # if the operation succeeded
                 ip_locations[packet["ip"]] = html["country"]
+            else:  # the location lookup failed.
+                ip_locations[packet["ip"]] = "unknown location"
+
     print(ip_locations)
     quit()
 
@@ -103,6 +109,7 @@ def get_ip():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('8.8.8.8', 0))
         address = s.getsockname()[0]
+        s.close()
     return address
 
 
