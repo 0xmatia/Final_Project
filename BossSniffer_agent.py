@@ -1,5 +1,4 @@
 from scapy.layers.inet import *
-from scapy.layers.inet6 import *
 from scapy.sendrecv import *
 from uuid import getnode as get_mac
 import socket
@@ -28,7 +27,7 @@ def sniff_filter(packet):
     :return: true if the packet is valid, false otherwise
     :rtype: bool
     """
-    return ((IP in packet) and packet[IPv6] is None) and (TCP in packet) or (UDP in packet)
+    return ((IP in packet) and (packet[IP].version == 4)) and (TCP in packet) or (UDP in packet)
 
 
 def process_packet(packet):
