@@ -8,6 +8,7 @@ SERVER_PORT = 8200
 BOSS_IP = "127.0.0.1"
 NUM_OF_PACKETS = 250
 IP_API = "http://ip-api.com/json/"
+MACHINE_IP = ""
 
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
@@ -18,8 +19,8 @@ my_mac = ':'.join(("%012X" % get_mac())[i:i + 2] for i in range(0, 12, 2))  # ge
 
 
 def main():
-
-    print(my_mac)
+    global MACHINE_IP
+    MACHINE_IP = get_ip()  # assign the machine ip
     while True:  # the function runs forever
         packet_list.clear()
         sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
@@ -33,8 +34,7 @@ def sniff_filter(packet):
     :return: true if the packet is valid, false otherwise
     :rtype: bool
     """
-    return (IP in packet) and (TCP in packet) or ((UDP in packet) and ((packet[ UDP].sport != 5353) or  # mDNS protocol use ipv6 and crashes the program. the only solution i could find
-                                                                       (packet[UDP].dport != 5353)))
+    return (IP in packet) and (TCP in packet) or (UDP in packet)
 
 
 def process_packet(packet):
@@ -89,6 +89,21 @@ def get_ip_location():
                 ip_locations[packet["ip"]] = html["country"]
     print(ip_locations)
     quit()
+
+
+def get_ip():
+    """
+    The function returns the ip of the machine. supports both windows and linux
+    :return: the ip of the machine
+    :rtype: str
+    """
+    address = socket.gethostbyname(socket.gethostname())
+    if not address or address.startswith('127.'):
+        # ...on linux this is how you get you ip. the other way returns 127.0.1.1. we have to connect somewhere and ask for socket name
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(('8.8.8.8', 0))
+        address = s.getsockname()[0]
+    return address
 
 
 if __name__ == '__main__':
