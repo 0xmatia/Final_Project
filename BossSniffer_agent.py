@@ -103,13 +103,11 @@ def get_ip():
     :return: the ip of the machine
     :rtype: str
     """
-    address = socket.gethostbyname(socket.gethostname())
-    if not address or address.startswith('127.'):
-        # ...on linux this is how you get you ip. the other way returns 127.0.1.1. we have to connect somewhere and ask for socket name
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 0))
-        address = s.getsockname()[0]
-        s.close()
+
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('8.8.8.8', 0))
+    address = s.getsockname()[0]
+    s.close()
     return address
 
 
