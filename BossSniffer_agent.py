@@ -1,6 +1,6 @@
 from scapy.layers.inet import *
-from scapy.layers.inet6 import IPv6
 from scapy.sendrecv import *
+import json
 import requests
 import socket
 
@@ -43,7 +43,6 @@ def sniff_filter(packet):
             if TCP in packet or UDP in packet:
                 return True
     else:
-        packet.show()
         return False
 
 
@@ -110,8 +109,19 @@ def get_ip_location():
 
 
 def assign_location():
+    """
+    assigns country to each packet
+    :return: None
+    """
     for packet in packet_list:
         packet["country"] = ip_locations[packet["ip"]]
+
+
+def send_to_boss():
+    connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    data = json.dumps(packet_list)
+    connection.sendto(data.encode(), (BOSS_IP, SERVER_PORT))
+    connection.close()
 
 
 def get_ip():
