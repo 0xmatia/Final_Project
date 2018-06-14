@@ -6,7 +6,7 @@ import socket
 
 SERVER_PORT = 8200
 BOSS_IP = "127.0.0.1"
-NUM_OF_PACKETS = 10
+NUM_OF_PACKETS = 200
 IP_API = "http://ip-api.com/json/"
 MACHINE_IP = ""
 
@@ -67,13 +67,14 @@ def process_packet(packet):
     if packet[IP].src == MACHINE_IP:
         packet_dst = packet[IP].dst
         temp_dict["outgoing"] = True
+        temp_dict["dport"] = p_type.dport
     else:
         packet_dst = packet[IP].src
         temp_dict["outgoing"] = False
+        temp_dict["dport"] = p_type.sport
     print(str(packet[IP].src) + ":" + str(p_type.sport) + " ==> " + str(packet[IP].dst) + ":" + str(p_type.dport))
 
     temp_dict["ip"] = packet_dst
-    temp_dict["dport"] = p_type.dport
     temp_dict["size"] = len(packet)
 
     packet_list.append(temp_dict)  # add the packet information to the global packet list
@@ -84,15 +85,29 @@ def init():
     The function prints some basic information to the user
     :return: None
     """
+    global BOSS_IP
+    global NUM_OF_PACKETS
     print("Welcome to BossSniffer agent! Let's verify some information before we begin.")
     print("The IP of the boss: " + BOSS_IP)
     print("The port: " + str(SERVER_PORT))
     print("The number of packets per cycle: " + str(NUM_OF_PACKETS))
-    print("You can modify these values in the constants area. You can terminate the program anytime by pressing Ctrl+C. Continue? y/n")
+    print("You can modify these values. Type \'IP\' to modify the IP, type \'PACKS\' to modify the number packet per round, or press enter to user defaults. ")
     choice = input()
-    if choice == "n":
-        quit()
-    print("\nStarting now.\n")
+    if choice == "IP":
+        BOSS_IP = input("Enter new IP: ")
+        print("Press enter to continue or type \'PACKS\' to modify the number of packs per round")
+        choice = input()
+        if choice == "PACKS":
+            NUM_OF_PACKETS = int(input("Enter new number of packs per round: "))
+
+    elif choice == "PACKS":
+        NUM_OF_PACKETS = input("Enter new number of packs per round: ")
+        print("Press enter to continue or type \'IP\' to modify the IP of the server")
+        choice = input()
+        if choice == "IP":
+            NUM_OF_PACKETS = int(input("Enter new server IP: "))
+    print("All set! You can stop the sniffer anytime by pressing {0}! Press enter to start.".format("Ctrl+C"))
+    choice = input()
 
 
 def get_ip_location():
@@ -111,6 +126,7 @@ def get_ip_location():
                 packet["country"] = ip_locations[packet["ip"]]
             else:  # the location lookup failed.
                 ip_locations[packet["ip"]] = "unknown location"
+                packet["country"] = ip_locations[packet["ip"]]
 
 
 def send_to_boss():
