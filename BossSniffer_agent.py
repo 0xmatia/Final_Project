@@ -20,6 +20,7 @@ packet_list = []  # the list is being erased every NUM_OF_PACKETS times
 def main():
     global MACHINE_IP
     MACHINE_IP = get_ip()  # assign the machine ip
+    print(MACHINE_IP)
     while True:  # the function runs forever
         packet_list.clear()
         sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
@@ -37,8 +38,13 @@ def sniff_filter(packet):
     :return: true if the packet is valid, false otherwise
     :rtype: bool
     """
-    return ((IP in packet) and not (IPv6 in packet and packet[IPv6].version == 6)) and (
-                (packet[IP].src == MACHINE_IP) or (packet[IP].dst == MACHINE_IP)) and (TCP in packet) or (UDP in packet)
+    if IP in packet:
+        if packet[IP].src == MACHINE_IP or packet[IP].dst == MACHINE_IP:
+            if TCP in packet or UDP in packet:
+                return True
+    else:
+        packet.show()
+        return False
 
 
 def process_packet(packet):
@@ -49,7 +55,6 @@ def process_packet(packet):
     :return: None
     """
     #  find packet type:
-
     temp_dict = {}
     if TCP in packet:
         p_type = packet[TCP]
@@ -102,8 +107,6 @@ def get_ip_location():
                 ip_locations[packet["ip"]] = html["country"]
             else:  # the location lookup failed.
                 ip_locations[packet["ip"]] = "unknown location"
-
-    print(ip_locations)
 
 
 def assign_location():
