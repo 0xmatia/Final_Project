@@ -1,4 +1,5 @@
 from scapy.layers.inet import *
+from scapy.layers.inet6 import IPv6
 from scapy.sendrecv import *
 import requests
 import socket
@@ -12,6 +13,7 @@ MACHINE_IP = ""
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
 
+
 # https://stackoverflow.com/questions/159137/getting-mac-address
 
 
@@ -22,16 +24,21 @@ def main():
         packet_list.clear()
         sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
         get_ip_location()
+        assign_location()
+        print(packet_list)
+        quit()
 
 
 def sniff_filter(packet):
     """
     the function checks if the packet given is udp or tcp and above ip layer (only Ipv4 otherwise the program crashes)
+    in addition, it makes sure that the packet is from or to this machine (not in promisc mouse)
     :param packet: the packet to check
     :return: true if the packet is valid, false otherwise
     :rtype: bool
     """
-    return (IP in packet) and (TCP in packet) or (UDP in packet)
+    return ((IP in packet) and not (IPv6 in packet and packet[IPv6].version == 6)) and (
+                (packet[IP].src == MACHINE_IP) or (packet[IP].dst == MACHINE_IP)) and (TCP in packet) or (UDP in packet)
 
 
 def process_packet(packet):
@@ -81,20 +88,27 @@ def init():
 
 
 def get_ip_location():
+    """
+    The function finds locations of given IP. if the lookup fails (mostly because of private ips in the same subnet)
+    :return: None
+    """
     for packet in packet_list:
         if packet["ip"] in ip_locations.keys():  # if the ip is in the dictionary, we know its location
             packet["country"] = ip_locations[packet["ip"]]
         else:
-            response = requests.get(IP_API+packet["ip"])
+            response = requests.get(IP_API + packet["ip"])
             html = response.json()
-            print(html)
             if "fail" not in html.values():  # if the operation succeeded
                 ip_locations[packet["ip"]] = html["country"]
             else:  # the location lookup failed.
                 ip_locations[packet["ip"]] = "unknown location"
 
     print(ip_locations)
-    quit()
+
+
+def assign_location():
+    for packet in packet_list:
+        packet["country"] = ip_locations[packet["ip"]]
 
 
 def get_ip():
