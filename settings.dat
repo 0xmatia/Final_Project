@@ -1,0 +1,2 @@
+WORKERS = eran:192.168.0.1,yossi:192.168.1.1,dani:152.23.12.191,elad:127.0.0.1
+BLACKLIST = 1.2.3.4:facebook,95.1.2.2:twitter

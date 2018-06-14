@@ -6,7 +6,7 @@ import socket
 
 SERVER_PORT = 8200
 BOSS_IP = "127.0.0.1"
-NUM_OF_PACKETS = 250
+NUM_OF_PACKETS = 10
 IP_API = "http://ip-api.com/json/"
 MACHINE_IP = ""
 
@@ -14,20 +14,24 @@ ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
 
 
-# https://stackoverflow.com/questions/159137/getting-mac-address
-
-
 def main():
     global MACHINE_IP
+    global packet_list
     MACHINE_IP = get_ip()  # assign the machine ip
-    print(MACHINE_IP)
+    init()
     while True:  # the function runs forever
-        packet_list.clear()
+        packet_list = []
         sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
+        print("Done.\nPerforming location lookup.")
         get_ip_location()
-        assign_location()
-        print(packet_list)
-        quit()
+        print("Sending information to server")
+        try:
+            send_to_boss()
+        except Exception:
+            print("Failed to send. Trying again")
+            send_to_boss()
+            print("Couldn't reach server. May be offline. Program is being terminated")
+        print("Done. Proceeding to the next round\n")
 
 
 def sniff_filter(packet):
@@ -69,9 +73,9 @@ def process_packet(packet):
     print(str(packet[IP].src) + ":" + str(p_type.sport) + " ==> " + str(packet[IP].dst) + ":" + str(p_type.dport))
 
     temp_dict["ip"] = packet_dst
-
     temp_dict["dport"] = p_type.dport
     temp_dict["size"] = len(packet)
+
     packet_list.append(temp_dict)  # add the packet information to the global packet list
 
 
@@ -84,7 +88,7 @@ def init():
     print("The IP of the boss: " + BOSS_IP)
     print("The port: " + str(SERVER_PORT))
     print("The number of packets per cycle: " + str(NUM_OF_PACKETS))
-    print("You can modify these values in the constants area. Continue? y/n")
+    print("You can modify these values in the constants area. You can terminate the program anytime by pressing Ctrl+C. Continue? y/n")
     choice = input()
     if choice == "n":
         quit()
@@ -93,7 +97,7 @@ def init():
 
 def get_ip_location():
     """
-    The function finds locations of given IP. if the lookup fails (mostly because of private ips in the same subnet)
+    The function finds locations of given IP. if the lookup fails (mostly because of private ips in the same subnet) location replaced with unknown location string
     :return: None
     """
     for packet in packet_list:
@@ -104,21 +108,18 @@ def get_ip_location():
             html = response.json()
             if "fail" not in html.values():  # if the operation succeeded
                 ip_locations[packet["ip"]] = html["country"]
+                packet["country"] = ip_locations[packet["ip"]]
             else:  # the location lookup failed.
                 ip_locations[packet["ip"]] = "unknown location"
 
 
-def assign_location():
+def send_to_boss():
     """
-    assigns country to each packet
+    The function sends report to the boss.
     :return: None
     """
-    for packet in packet_list:
-        packet["country"] = ip_locations[packet["ip"]]
-
-
-def send_to_boss():
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    print()
     data = json.dumps(packet_list)
     connection.sendto(data.encode(), (BOSS_IP, SERVER_PORT))
     connection.close()
