@@ -2,7 +2,7 @@ import socket
 import json
 
 LISTEN_PORT = 8200
-FILE_PATH = "C:\\Users\\eladm\\Documents\\Final_Project\\settings.dat"
+FILE_PATH = "settings.dat"
 
 with open(FILE_PATH, "r") as file:  # read the settings file
     data = file.readline().split("\n")  # split workers from black list

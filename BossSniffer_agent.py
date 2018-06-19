@@ -3,6 +3,7 @@ from scapy.sendrecv import *
 import json
 import requests
 import socket
+import ctypes, sys
 
 SERVER_PORT = 8200
 BOSS_IP = "127.0.0.1"
@@ -12,26 +13,30 @@ MACHINE_IP = ""
 
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
+program_dict = {}
 
 
 def main():
-    global MACHINE_IP
-    global packet_list
-    MACHINE_IP = get_ip()  # assign the machine ip
-    init()
-    while True:  # the function runs forever
-        packet_list = []
-        sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
-        print("Done.\nPerforming location lookup.")
-        get_ip_location()
-        print("Sending information to server")
-        try:
-            send_to_boss()
-        except Exception:
-            print("Failed to send. Trying again")
-            send_to_boss()
-            print("Couldn't reach server. May be offline. Program is being terminated")
-        print("Done. Proceeding to the next round\n")
+    if is_admin():
+        global MACHINE_IP
+        global packet_list
+        MACHINE_IP = get_ip()  # assign the machine ip
+        init()
+        while True:  # the function runs forever
+            packet_list = []
+            sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
+            print("Done.\nPerforming location lookup.")
+            get_ip_location()
+            print("Sending information to server")
+            try:
+                send_to_boss()
+            except Exception:
+                print("Failed to send. Trying again")
+                send_to_boss()
+                print("Couldn't reach server. May be offline. Program is being terminated")
+            print("Done. Proceeding to the next round\n")
+    else:
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)  # run the program as admin
 
 
 def sniff_filter(packet):
@@ -87,11 +92,13 @@ def init():
     """
     global BOSS_IP
     global NUM_OF_PACKETS
+    netstat()
     print("Welcome to BossSniffer agent! Let's verify some information before we begin.")
     print("The IP of the boss: " + BOSS_IP)
     print("The port: " + str(SERVER_PORT))
     print("The number of packets per cycle: " + str(NUM_OF_PACKETS))
-    print("You can modify these values. Type \'IP\' to modify the IP, type \'PACKS\' to modify the number packet per round, or press enter to user defaults. ")
+    print(
+        "You can modify these values. Type \'IP\' to modify the IP, type \'PACKS\' to modify the number packet per round, or press enter to user defaults. ")
     choice = input()
     if choice == "IP":
         BOSS_IP = input("Enter new IP: ")
@@ -141,6 +148,18 @@ def send_to_boss():
     connection.close()
 
 
+def is_admin():
+    """
+    The function checks if the user uses admin rights
+    :return: true if the program runs as admin, false otherwise
+    :rtype: bool
+    """
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except Exception:
+        return False
+
+
 def get_ip():
     """
     The function returns the ip of the machine. supports both windows and linux
@@ -153,6 +172,14 @@ def get_ip():
     address = s.getsockname()[0]
     s.close()
     return address
+
+
+def netstat():
+    a = os.popen("netstat -nb", "r", 1).readlines()[4:]
+    new_list = []
+    for i in range(0, len(a)-1, 2):
+        new_list.append((a[i], a[i+1]))
+    print(new_list)
 
 
 if __name__ == '__main__':
