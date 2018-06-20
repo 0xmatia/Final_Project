@@ -1,9 +1,10 @@
+import ctypes
+import json
+import socket
+
+import requests
 from scapy.layers.inet import *
 from scapy.sendrecv import *
-import json
-import requests
-import socket
-import ctypes, sys
 
 SERVER_PORT = 8200
 BOSS_IP = "127.0.0.1"
@@ -180,6 +181,8 @@ def netstat():
     for i in range(0, len(a)-1, 2):
         new_list.append((a[i], a[i+1]))
     print(new_list)
+    for item in new_list:
+        a = item[item[0].find("         ") + 9:item[0].find(" ")]
 
 
 if __name__ == '__main__':

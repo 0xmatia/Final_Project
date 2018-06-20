@@ -6,7 +6,7 @@ FILE_PATH = "settings.dat"
 
 with open(FILE_PATH, "r") as file:  # read the settings file
     data = file.readline().split("\n")  # split workers from black list
-
+    os
 
 def main():
     print("Boss server is up. Opening socket")
