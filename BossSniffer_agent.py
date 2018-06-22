@@ -14,7 +14,7 @@ MACHINE_IP = ""
 
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
-program_dict = {}
+programs = []
 
 
 def main():
@@ -23,19 +23,23 @@ def main():
         global packet_list
         MACHINE_IP = get_ip()  # assign the machine ip
         init()
-        while True:  # the function runs forever
-            packet_list = []
-            sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
-            print("Done.\nPerforming location lookup.")
-            get_ip_location()
-            print("Sending information to server")
-            try:
-                send_to_boss()
-            except Exception:
-                print("Failed to send. Trying again")
-                send_to_boss()
-                print("Couldn't reach server. May be offline. Program is being terminated")
-            print("Done. Proceeding to the next round\n")
+        # The first ctrl + c exit the sniffer, so we need to have exception if we try to exit the while loop
+        try:
+            while True:  # the function runs forever
+                packet_list = []
+                sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
+                print("Done.\nPerforming location lookup.")
+                get_ip_location()
+                print("Sending information to server")
+                try:
+                    send_to_boss()
+                except Exception:
+                    print("Failed to send. Trying again")
+                    send_to_boss()
+                    print("Couldn't reach server. Maybe offline. Program is being terminated")
+                print("Done. Proceeding to the next round\n")
+        except KeyboardInterrupt:
+            print("Ctrl+C detected. Agent is being terminated")
     else:
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)  # run the program as admin
 
@@ -80,7 +84,8 @@ def process_packet(packet):
         temp_dict["dport"] = p_type.sport
     print(str(packet[IP].src) + ":" + str(p_type.sport) + " ==> " + str(packet[IP].dst) + ":" + str(p_type.dport))
 
-    temp_dict["ip"] = packet_dst
+    temp_dict["ip"] = packet_dst  # the destination ip of the packet
+    temp_dict["prog"] = netstat(packet_dst)  # the program uses the ip
     temp_dict["size"] = len(packet)
 
     packet_list.append(temp_dict)  # add the packet information to the global packet list
@@ -93,7 +98,6 @@ def init():
     """
     global BOSS_IP
     global NUM_OF_PACKETS
-    netstat()
     print("Welcome to BossSniffer agent! Let's verify some information before we begin.")
     print("The IP of the boss: " + BOSS_IP)
     print("The port: " + str(SERVER_PORT))
@@ -175,14 +179,31 @@ def get_ip():
     return address
 
 
-def netstat():
-    a = os.popen("netstat -nb", "r", 1).readlines()[4:]
-    new_list = []
-    for i in range(0, len(a)-1, 2):
-        new_list.append((a[i], a[i+1]))
-    print(new_list)
-    for item in new_list:
-        a = item[item[0].find("         ") + 9:item[0].find(" ")]
+def netstat(ip):
+    """
+    The function returns the program that uses the given ip. (the function avoids time wait state)
+    :param ip: the ip to check on
+    :type ip: str
+    :return: the name of the program if it was found and Unknown otherwise
+    """
+    for i in range(0, len(programs)):  # try to find the program in the existing list
+        if ip in programs[i] and "TIME_WAIT" not in programs[i]:  # avoid time_wait connections
+            return programs[i + 1][2:-1]
+    # if we couldn't find a match, we will update the list with the netstat command and try again. if then it fails, we will return unknown
+    update_prog_list()
+    for i in range(0, len(programs)):
+        if ip in programs[i] and "TIME_WAIT" not in programs[i]:
+            return programs[i + 1][2:-1]
+    return "Unknown"
+
+
+def update_prog_list():
+    """
+    The function updates the program list with the latest output of netstat
+    :return: none
+    """
+    global programs
+    programs = os.popen("netstat -nb", "r", 1).read().split("\n")[4:]  # without the headlines
 
 
 if __name__ == '__main__':
