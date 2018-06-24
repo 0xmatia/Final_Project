@@ -5,8 +5,13 @@ LISTEN_PORT = 8200
 FILE_PATH = "settings.dat"
 LOG_TEMPLATE_PATH = "Logs/template.html"
 DATA = ""
-IP_SIZE_DICT = {}
-COUNTRY_SIZE_DICT = {}
+
+ip_size_dict = {}
+country_size_dict = {}
+program_size_dict = {}
+port_size_dict = {}
+incoming_user_size_dict = {}
+outgoing_user_size_dict = {}
 
 
 def main():
@@ -31,7 +36,7 @@ def main():
         if user != "-1":
             print("Received report from {0}:\t".format(user), end="")
             print(json.loads(client_msg.decode()))
-            update_log(json.loads(client_msg.decode()))
+            update_log(json.loads(client_msg.decode()), user)
         else:
             print("Received report from unknown user. Stats won't be added to the log:\t", end="")
             print(json.loads(client_msg.decode()))
@@ -57,36 +62,56 @@ def who_is_it(address):
     return "-1"
 
 
-def update_log(response):
+def update_log(response, user):
     """
     Updates the graphs in the log.
     :param response: the response from the agent
     :type response: list
+    :param user: the sender of this packet
+    :type user: str
     :return: None
     """
-    # traffic per ip
-    update_traffic_per_ip(response)
-    # traffic per country
-    update_traffic_per_country(response)
+    global ip_size_dict
+    global country_size_dict
+    global program_size_dict
+    global port_size_dict
+    # TODO: update time
+    # update traffic per ip
+    update_traffic(response, 272, 276, ip_size_dict, "ip")
+    # update traffic per country
+    update_traffic(response, 225, 229, country_size_dict, "country")
+    # update traffic per program
+    update_traffic(response, 317, 321, program_size_dict, "prog")
+    # update traffic per port
+    update_traffic(response, 364, 368, port_size_dict, "dport")
+    # update agent specific stats
+    agent_traffic(response, user)
 
 
-def update_traffic_per_ip(response):
+def update_traffic(response, num1, num2, dictionary, element):
     """
-   The function updates the html log every response
+   The function updates a given graph with the latest response from the agent
    :param response: the response from the agent
    :type response: list
+   :param num1: the line number of the label data set -1
+   :type num1: int
+   :param num2: the line number of the actual data set -1
+   :type num2: int
+   :param dictionary: the dictionary with size and prog \ port \ ip etc
+   :type dictionary: dict
+   :param element: what part of the protocol we want to extract (prog / port/ ip etc)
    :return: none
    """
-    ip_list = []
+    x_axis = []
     size_list = []
     for item in response:
-        if item["ip"] not in IP_SIZE_DICT.keys():
-            IP_SIZE_DICT[item["ip"]] = int(item["size"])  # if the ip doesnt exist in the dictionary add it
+        if item[element] not in dictionary.keys():
+            dictionary[item[element]] = int(item["size"])  # if the ip doesnt exist in the dictionary add it
         else:
-            IP_SIZE_DICT[item["ip"]] += int(item["size"])  # otherwise add the size to existing key in the dictionary
+            dictionary[item[element]] += int(item["size"])  # otherwise add the size to existing key in the dictionary
 
-    for key, value in IP_SIZE_DICT.items():
-        ip_list.append(key)
+    for key, value in dictionary.items():
+        x_axis.append(key)
         size_list.append(value)
 
     log = open(LOG_TEMPLATE_PATH, "r")
@@ -94,40 +119,51 @@ def update_traffic_per_ip(response):
     log.close()
 
     log = open(LOG_TEMPLATE_PATH, "w")
-    temp[272] = "labels: " + str(ip_list) + ","  # update labels
-    temp[276] = "data: " + str(size_list) + ""  # update update daa
+    temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
+    temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
     log.close()
 
 
-def update_traffic_per_country(response):
-    """
-    The function updates the traffic per country graph
-    :param response:  the response from the agent
-    :type response: list
-    :return: None
-    """
-    country_list = []
+def agent_traffic(response, user):
+    # response came from user
+    global outgoing_user_size_dict
+    global incoming_user_size_dict
+
     size_list = []
+    x_axis = []
+    num1 = 0
+    num2 = 0
     for item in response:
-        if item["country"] not in COUNTRY_SIZE_DICT.keys():
-            COUNTRY_SIZE_DICT[item["country"]] = int(
-                item["size"])  # if the country doesnt exist in the dictionary add it
+        if item["outgoing"]:
+            num1 = 152
+            num2 = 156
+            if user not in outgoing_user_size_dict.keys():  # create a dictionary of names and size
+                outgoing_user_size_dict[user] = int(item["size"])
+            else:
+                outgoing_user_size_dict[user] += int(item["size"])
+            for key, value in outgoing_user_size_dict.items():  # separate the list
+                x_axis.append(key)
+                size_list.append(value)
+
         else:
-            COUNTRY_SIZE_DICT[item["country"]] += int(
-                item["size"])  # otherwise add the size to existing key in the dictionary
+            num1 = 180
+            num2 = 184
+            if user not in incoming_user_size_dict.keys():
+                incoming_user_size_dict[user] = int(item["size"])
+            else:
+                incoming_user_size_dict[user] += int(item["size"])
+            for key, value in outgoing_user_size_dict.items():
+                x_axis.append(key)
+                size_list.append(value)
 
-    for key, value in COUNTRY_SIZE_DICT.items():
-        country_list.append(key)
-        size_list.append(value)
-
-    log = open(LOG_TEMPLATE_PATH, "r")  # read the contents of the log.
+    log = open(LOG_TEMPLATE_PATH, "r")
     temp = log.readlines()
     log.close()
 
-    log = open(LOG_TEMPLATE_PATH, "w")
-    temp[225] = "labels: " + str(country_list) + ","  # update labels
-    temp[229] = "data: " + str(size_list) + ""  # update update daa
+    log = open(LOG_TEMPLATE_PATH, "w")  # update the log
+    temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
+    temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
     log.close()
 
