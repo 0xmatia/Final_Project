@@ -1,6 +1,7 @@
 import socket
 import json
 import datetime
+from shutil import copyfile
 
 LISTEN_PORT = 8200
 FILE_PATH = "settings.dat"
@@ -8,6 +9,7 @@ LOG_TEMPLATE_PATH = "Logs/template.html"
 DATA = ""
 
 blacklist = []
+log_path = ""
 blacklist_users = []
 ip_size_dict = {}
 country_size_dict = {}
@@ -19,6 +21,7 @@ outgoing_user_size_dict = {}
 
 def main():
     global DATA
+    global log_path
     path = input("Please enter path for the settings file. Press enter to user default: ")
     if path == "":
         path = FILE_PATH
@@ -30,7 +33,20 @@ def main():
         with open(FILE_PATH, "r") as file:  # read the settings file
             DATA = file.read().split("\n")
     blacklister()  # figure out what the black list ips are
-    # TODO: ADD THE OPTION TO CHOOSE THE LOG PATH
+
+    # ask for log name
+    log_name = input(
+        "Enter log file name with .html extension. all logs are saved in: Final_Project\Logs. Example: log1.html: ")
+    log_path = "Logs/" + log_name
+    while True:
+        try:  # checking for valid file name
+            copyfile(LOG_TEMPLATE_PATH, log_path)
+        except Exception:
+            choice = input("The program encountered a problem while trying to create a log. Please try again: ")
+            log_path = "Logs/" + choice
+        else:  # the file path is valid! we can exit the loop
+            break
+
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connection.bind(('', LISTEN_PORT))
     print("Boss server is up.")
@@ -38,12 +54,11 @@ def main():
         client_msg, client_addr = connection.recvfrom(100000)
         user = who_is_it(client_addr)
         if user != "-1":
-            print("Received report from {0}:\t".format(user), end="")
+            print("Received report from {0}.\t".format(user), end="")
             print(json.loads(client_msg.decode()))
             update_log(json.loads(client_msg.decode()), user)
         else:
-            print("Received report from unknown user. Stats won't be added to the log:\t", end="")
-            print(json.loads(client_msg.decode()))
+            print("Received report from unknown user. Stats won't be added to the log.\t", end="")
         print("\n")
 
 
@@ -82,11 +97,11 @@ def update_log(response, user):
     # update time:
     now = datetime.datetime.now()
     time_sig = str(now.day) + "." + str(now.month) + "." + str(now.year) + ", " + str(now.hour) + ":" + str(now.minute)
-    log = open(LOG_TEMPLATE_PATH, "r")
+    log = open(log_path, "r")
     temp = log.readlines()
     log.close()
     temp[114] = "<p>Last update: " + time_sig + "</p>\n"
-    log = open(LOG_TEMPLATE_PATH, "w")
+    log = open(log_path, "w")
     log.writelines(temp)
     log.close()
 
@@ -103,6 +118,7 @@ def update_log(response, user):
     agent_traffic_outgoing(response, user)
     # update alerts
     update_alerts(response, user)
+
 
 def update_traffic(response, num1, num2, dictionary, element):
     """
@@ -130,11 +146,11 @@ def update_traffic(response, num1, num2, dictionary, element):
         x_axis.append(key)
         size_list.append(value)
 
-    log = open(LOG_TEMPLATE_PATH, "r")
+    log = open(log_path, "r")
     temp = log.readlines()
     log.close()
 
-    log = open(LOG_TEMPLATE_PATH, "w")
+    log = open(log_path, "w")
     temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
     temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
@@ -170,11 +186,11 @@ def agent_traffic_outgoing(response, user):
         x_axis.append(key)
         size_list.append(value)
 
-    log = open(LOG_TEMPLATE_PATH, "r")
+    log = open(log_path, "r")
     temp = log.readlines()
     log.close()
 
-    log = open(LOG_TEMPLATE_PATH, "w")  # update the log
+    log = open(log_path, "w")  # update the log
     temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
     temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
@@ -210,11 +226,11 @@ def agent_traffic_incoming(response, user):
         x_axis.append(key)
         size_list.append(value)
 
-    log = open(LOG_TEMPLATE_PATH, "r")
+    log = open(log_path, "r")
     temp = log.readlines()
     log.close()
 
-    log = open(LOG_TEMPLATE_PATH, "w")  # update the log
+    log = open(log_path, "w")  # update the log
     temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
     temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
@@ -245,11 +261,13 @@ def update_alerts(response, user):
     for item in response:
         if item["ip"] in blacklist:
             blacklist_users.append((user, item["ip"]))
-    log = open(LOG_TEMPLATE_PATH, "r")
+            blacklist.remove(item[
+                                 "ip"])  # because someone has already entered the ip, we can remove it from the blacklist so it won't be added again and again
+    log = open(log_path, "r")
     temp = log.readlines()
     log.close()
 
-    log = open(LOG_TEMPLATE_PATH, "w")
+    log = open(log_path, "w")
     temp[403] = str(blacklist_users)
     log.writelines(temp)
     log.close()

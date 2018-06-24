@@ -17,6 +17,8 @@ ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
 programs = []
 
+# NOTE: dns requests cannot be traced back to the program asked for them, so "Unknown" will be the program
+
 
 def main():
     if is_admin():
@@ -189,12 +191,12 @@ def netstat(ip):
     :return: the name of the program if it was found and Unknown otherwise
     """
     for i in range(0, len(programs)):  # try to find the program in the existing list
-        if ip in programs[i] and "TIME_WAIT" not in programs[i]:  # avoid time_wait connections
+        if ip in programs[i] and ("TIME_WAIT" not in programs[i]) and ("SYN_WAIT" not in programs[i]):  # avoid time_wait connections
             return programs[i + 1][2:-1]
     # if we couldn't find a match, we will update the list with the netstat command and try again. if then it fails, we will return unknown
     update_prog_list()
     for i in range(0, len(programs)):
-        if ip in programs[i] and "TIME_WAIT" not in programs[i]:
+        if ip in programs[i] and ("TIME_WAIT" not in programs[i]) and ("SYN_WAIT" not in programs[i]):
             return programs[i + 1][2:-1]
     return "Unknown"
 

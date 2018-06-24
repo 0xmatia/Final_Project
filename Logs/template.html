@@ -112,7 +112,7 @@
                         <div class="divider dark">
                             <i class="icon-graduation"></i>
                         </div>
-<p>Last update: 24.6.2018, 12:7</p>
+                        <p>Last update: %%TIMESTAMP%%</p>
                     </div>
                 </div>
             </div>
@@ -150,11 +150,11 @@
                         responsive: false,
                         type: 'bar',
                         data: {
-                       labels: ['elad'],
+                            labels: %%AGENTS_IN_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [104648]
+                                data: %%AGENTS_IN_VALUES%%
                             }]
                         },
                         options: {
@@ -178,11 +178,11 @@
                         responsive: false,
                         type: 'bar',
                         data: {
-                       labels: ['elad'],
+                            labels: %%AGENTS_OUT_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [18113]
+                                data: %%AGENTS_OUT_VALUES%%
                             }]
                         },
                         options: {
@@ -223,11 +223,11 @@
                         responsive: false,
                         type: 'pie',
                         data: {
-                       labels: ['unknown location', 'Ireland', 'United States'],
+                            labels: %%COUNTRIES_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [3110, 9548, 110103]
+                                data: %%COUNTRIES_VALUES%%
                             }]
                         },
                         options: {
@@ -270,11 +270,11 @@
                         responsive: false,
                         type: 'pie',
                         data: {
-                       labels: ['230.0.0.1', '40.77.229.199', '52.179.84.19', '192.168.1.12', '104.16.60.37', '158.85.224.178', '204.79.197.213', '8.8.8.8', '64.233.167.95', '64.233.167.119', '173.194.76.189', '64.233.167.188'],
+                            labels: %%IPS_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [1196, 9548, 385, 1914, 1623, 490, 2755, 501, 5228, 98704, 296, 121]
+                                data: %%IPS_VALUES%%
                             }]
                         },
                         options: {
@@ -315,11 +315,11 @@
                         responsive: false,
                         type: 'bar',
                         data: {
-                       labels: ['Unknown', 'CDPUserSvc_23e34d4', 'OneDrive.exe', 'chrome.exe', 'Discord.exe', 'WINWORD.EXE'],
+                            labels: %%APPS_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [105925, 9548, 385, 2525, 1623, 2755]
+                                data: %%APPS_VALUES%%
                             }]
                         },
                         options: {
@@ -362,11 +362,11 @@
                         responsive: false,
                         type: 'bar',
                         data: {
-                       labels: [6666, 443, 8009, 53, 5228],
+                            labels: %%PORTS_KEYS%%,
                             datasets: [{
                                 label: "Bytes",
                                 backgroundColor: BACKGROUD_COLORS_LIST,
-                       data: [1196, 119029, 1914, 501, 121]
+                                data: %%PORTS_VALUES%%
                             }]
                         },
                         options: {
@@ -401,7 +401,8 @@
             </div>
             <div class="row">
                 
-[]            </div>
+                %%ALERTS%%
+            </div>
         </div>
         </div>
     </section>
