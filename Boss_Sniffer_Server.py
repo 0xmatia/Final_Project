@@ -1,11 +1,14 @@
 import socket
 import json
+import datetime
 
 LISTEN_PORT = 8200
 FILE_PATH = "settings.dat"
 LOG_TEMPLATE_PATH = "Logs/template.html"
 DATA = ""
 
+blacklist = []
+blacklist_users = []
 ip_size_dict = {}
 country_size_dict = {}
 program_size_dict = {}
@@ -21,11 +24,12 @@ def main():
         path = FILE_PATH
     try:
         with open(path, "r") as file:  # read the settings file
-            DATA = file.readline().split("\n")  # split workers from black list
+            DATA = file.read().split("\n")
     except Exception:
         print("Couldn't open file. Using defaults")
         with open(FILE_PATH, "r") as file:  # read the settings file
-            DATA = file.readline().split("\n")  # split workers from black list
+            DATA = file.read().split("\n")
+    blacklister()  # figure out what the black list ips are
     # TODO: ADD THE OPTION TO CHOOSE THE LOG PATH
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connection.bind(('', LISTEN_PORT))
@@ -75,7 +79,17 @@ def update_log(response, user):
     global country_size_dict
     global program_size_dict
     global port_size_dict
-    # TODO: update time
+    # update time:
+    now = datetime.datetime.now()
+    time_sig = str(now.day) + "." + str(now.month) + "." + str(now.year) + ", " + str(now.hour) + ":" + str(now.minute)
+    log = open(LOG_TEMPLATE_PATH, "r")
+    temp = log.readlines()
+    log.close()
+    temp[114] = "<p>Last update: " + time_sig + "</p>\n"
+    log = open(LOG_TEMPLATE_PATH, "w")
+    log.writelines(temp)
+    log.close()
+
     # update traffic per ip
     update_traffic(response, 272, 276, ip_size_dict, "ip")
     # update traffic per country
@@ -85,8 +99,10 @@ def update_log(response, user):
     # update traffic per port
     update_traffic(response, 364, 368, port_size_dict, "dport")
     # update agent specific stats
-    agent_traffic(response, user)
-
+    agent_traffic_incoming(response, user)
+    agent_traffic_outgoing(response, user)
+    # update alerts
+    update_alerts(response, user)
 
 def update_traffic(response, num1, num2, dictionary, element):
     """
@@ -99,7 +115,7 @@ def update_traffic(response, num1, num2, dictionary, element):
    :type num2: int
    :param dictionary: the dictionary with size and prog \ port \ ip etc
    :type dictionary: dict
-   :param element: what part of the protocol we want to extract (prog / port/ ip etc)
+   :param element: which part of the protocol we want to extract (prog / port/ ip etc)
    :return: none
    """
     x_axis = []
@@ -125,10 +141,17 @@ def update_traffic(response, num1, num2, dictionary, element):
     log.close()
 
 
-def agent_traffic(response, user):
+def agent_traffic_outgoing(response, user):
+    """
+    The function updates the outgoing graph stats
+    :param response: the response from the client
+    :type response: list
+    :param user: the user who sent the response (being extracted from the settings.dat file, uses the who_is_it function)
+    :type user: str
+    :return: None
+    """
     # response came from user
     global outgoing_user_size_dict
-    global incoming_user_size_dict
 
     size_list = []
     x_axis = []
@@ -136,26 +159,16 @@ def agent_traffic(response, user):
     num2 = 0
     for item in response:
         if item["outgoing"]:
-            num1 = 152
-            num2 = 156
+            num1 = 180
+            num2 = 184
             if user not in outgoing_user_size_dict.keys():  # create a dictionary of names and size
                 outgoing_user_size_dict[user] = int(item["size"])
             else:
                 outgoing_user_size_dict[user] += int(item["size"])
-            for key, value in outgoing_user_size_dict.items():  # separate the list
-                x_axis.append(key)
-                size_list.append(value)
 
-        else:
-            num1 = 180
-            num2 = 184
-            if user not in incoming_user_size_dict.keys():
-                incoming_user_size_dict[user] = int(item["size"])
-            else:
-                incoming_user_size_dict[user] += int(item["size"])
-            for key, value in outgoing_user_size_dict.items():
-                x_axis.append(key)
-                size_list.append(value)
+    for key, value in outgoing_user_size_dict.items():  # separate the listS
+        x_axis.append(key)
+        size_list.append(value)
 
     log = open(LOG_TEMPLATE_PATH, "r")
     temp = log.readlines()
@@ -165,6 +178,80 @@ def agent_traffic(response, user):
     temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
     temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
     log.writelines(temp)  # write the updated information
+    log.close()
+
+
+def agent_traffic_incoming(response, user):
+    """
+    The function updates the incoming graph stats
+    :param response: the response from the client
+    :type response: list
+    :param user: the user who sent the response (being extracted from the settings.dat file, uses the who_is_it function)
+    :type user: str
+    :return: None
+    """
+    # response came from user
+    global incoming_user_size_dict
+
+    size_list = []
+    x_axis = []
+    num1 = 0
+    num2 = 0
+    for item in response:
+        if not item["outgoing"]:
+            num1 = 152
+            num2 = 156
+            if user not in incoming_user_size_dict.keys():  # create a dictionary of names and size
+                incoming_user_size_dict[user] = int(item["size"])
+            else:
+                incoming_user_size_dict[user] += int(item["size"])
+
+    for key, value in incoming_user_size_dict.items():  # separate the listS
+        x_axis.append(key)
+        size_list.append(value)
+
+    log = open(LOG_TEMPLATE_PATH, "r")
+    temp = log.readlines()
+    log.close()
+
+    log = open(LOG_TEMPLATE_PATH, "w")  # update the log
+    temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
+    temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
+    log.writelines(temp)  # write the updated information
+    log.close()
+
+
+def blacklister():
+    """
+    The function updates the black list ips
+    :return: None
+    """
+    global blacklist
+    a = DATA[1][12:].split(",")
+    for i in a:
+        blacklist.append(i[:i.find(":")])
+
+
+def update_alerts(response, user):
+    """
+    The function updates the alerts section in the report
+    :param response: the response from the user
+    :type response: list
+    :param user: the user who send the response
+    :type user: str
+    :return: None
+    """
+    global blacklist
+    for item in response:
+        if item["ip"] in blacklist:
+            blacklist_users.append((user, item["ip"]))
+    log = open(LOG_TEMPLATE_PATH, "r")
+    temp = log.readlines()
+    log.close()
+
+    log = open(LOG_TEMPLATE_PATH, "w")
+    temp[403] = str(blacklist_users)
+    log.writelines(temp)
     log.close()
 
 

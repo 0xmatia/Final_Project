@@ -1,6 +1,7 @@
 import ctypes
 import json
 import socket
+import time
 
 import requests
 from scapy.layers.inet import *
@@ -38,6 +39,7 @@ def main():
                     send_to_boss()
                     print("Couldn't reach server. Maybe offline. Program is being terminated")
                 print("Done. Proceeding to the next round\n")
+                time.sleep(10)
         except KeyboardInterrupt:
             print("Ctrl+C detected. Agent is being terminated")
     else:
