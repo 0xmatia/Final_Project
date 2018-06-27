@@ -2,7 +2,6 @@ import socket
 import json
 import datetime
 from shutil import copy
-import os
 
 LISTEN_PORT = 8200
 FILE_PATH = "settings.dat"
@@ -27,7 +26,7 @@ def main():
     global DATA
     global log_path
     global name
-    path = input("Please enter path for the settings file. Press enter to user default: ")
+    path = input("Please enter path for the settings file. Press enter to use default: ")
     if path == "":
         path = FILE_PATH
     try:
@@ -42,6 +41,8 @@ def main():
     # ask for log name
     log_name = input(
         "Enter log file name with .html extension. all logs are saved in: Final_Project\Logs. Example: log1.html: ")
+    while not log_name.endswith(".html"):
+        log_name = input("Please enter a valid log name (like: log1.html): ")
     log_path = "Logs\\" + log_name
     while True:
         try:  # checking for valid file name
@@ -52,9 +53,9 @@ def main():
         else:  # the file path is valid! we can exit the loop
             break
 
-    print(log_path)
-    name = input("Enter your name in the following format: firstname.lastname (log will be uploaded to www.firstname_lastname.bossniffer.com): ")
-
+    name = input("Enter your name in the following format: {firstname.lastname}:  ")
+    s_name = name.split(".")
+    print("Log is saved locally in: {" + log_path + "} and remotely in: www." + s_name[0] + "_" + s_name[1] + ".bossniffer.com")
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connection.bind(('', LISTEN_PORT))
     print("Boss server is up.")
@@ -63,7 +64,6 @@ def main():
         user = who_is_it(client_addr)
         if user != "-1":
             print("Received report from {0}.\t".format(user), end="")
-            print(json.loads(client_msg.decode()))
             update_log(json.loads(client_msg.decode()), user)
             try:
                 upload_log()  # upload the log to the server
@@ -111,9 +111,10 @@ def update_log(response, user):
     time_sig = str(now.day) + "." + str(now.month) + "." + str(now.year) + ", " + str(now.hour) + ":" + str(now.minute)
     with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
         temp[114] = "<p>Last update: " + time_sig + "</p>\n"
         log.writelines(temp)
-    upload_log()  # upload the log to the server
 
     # update traffic per ip
     update_traffic(response, 272, 276, ip_size_dict, "ip")
@@ -158,8 +159,9 @@ def update_traffic(response, num1, num2, dictionary, element):
 
     with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
 
-        log = open(log_path, "w")
         temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
         temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
         log.writelines(temp)  # write the updated information
@@ -194,10 +196,11 @@ def agent_traffic_outgoing(response, user):
         x_axis.append(key)
         size_list.append(value)
 
-    with open(log_path, "r") as log:
+    with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
 
-        log = open(log_path, "w")  # update the log
         temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
         temp[num2] = "                       data: " + str(size_list) + "\n"  # update update daa
         log.writelines(temp)  # write the updated information
@@ -232,8 +235,10 @@ def agent_traffic_incoming(response, user):
         x_axis.append(key)
         size_list.append(value)
 
-    with open(log_path, "r") as log:
+    with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
 
         log = open(log_path, "w")  # update the log
         temp[num1] = "                       labels: " + str(x_axis) + ",\n"  # update labels
@@ -267,8 +272,10 @@ def update_alerts(response, user):
             blacklist_users.append((user, item["ip"]))
             blacklist.remove(item[
                                  "ip"])  # because someone has already entered the ip, we can remove it from the blacklist so it won't be added again and again
-    with open(log_path, "r") as log:
+    with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
 
         log = open(log_path, "w")
         temp[403] = str(blacklist_users)
@@ -282,13 +289,12 @@ def upload_log():
     """
     with open(log_path, "r") as file:
         html = file.read()
+        file_size = len(html)  # the size of the log
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # open a socket
-    file_size = os.path.getsize(log_path)  # the size of the log
 
     connection.connect((SERVER_IP, SERVER_PORT))  # connect to the server
     connection.sendall(("400#USER="+name).encode())  # first, send the name to the server
     connection.recv(1024)
-    print(log_path)
 
     connection.sendall(("700#SIZE="+str(file_size)+",HTML="+html).encode())
     answer = connection.recv(1024).decode()

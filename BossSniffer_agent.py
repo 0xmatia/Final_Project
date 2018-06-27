@@ -41,7 +41,7 @@ def main():
                     send_to_boss()
                     print("Couldn't reach server. Maybe offline. Program is being terminated")
                 print("Done. Proceeding to the next round\n")
-                time.sleep(10)
+                time.sleep(2)
         except KeyboardInterrupt:
             print("Ctrl+C detected. Agent is being terminated")
     else:

@@ -11,10 +11,11 @@ log_path = "Logs\\log.html"
 
 def main():
     shutil.copy("Logs\\template.html", "Logs\\log.html")
-    upload_log()
 
     with open(log_path, "r+") as log:
         temp = log.readlines()
+        log.seek(0)
+        log.truncate()
         temp[114] = "<p>Last update: " + "I wanna kill myself" + "</p>\n"
         log.writelines(temp)
     upload_log()  # upload the log to the server
@@ -28,10 +29,9 @@ def upload_log():
     print(log_path)
     with open(log_path, "r") as file:
         html = file.read()
+        file_size = len(html)  # the size of the log
     connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # open a socket and connect to the server
-    file_size = os.path.getsize(log_path)  # the size of the log
 
-    print(file_size)
     connection.connect((SERVER_IP, SERVER_PORT))
     connection.sendall(("400#USER=" + "elad.matia").encode())  # first, send the name to the server
     connection.recv(1024)
