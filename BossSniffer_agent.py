@@ -117,7 +117,7 @@ def init():
             NUM_OF_PACKETS = int(input("Enter new number of packs per round: "))
 
     elif choice == "PACKS":
-        NUM_OF_PACKETS = input("Enter new number of packs per round: ")
+        NUM_OF_PACKETS = int(input("Enter new number of packs per round: "))
         print("Press enter to continue or type \'IP\' to modify the IP of the server")
         choice = input()
         if choice == "IP":
