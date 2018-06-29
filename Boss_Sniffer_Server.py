@@ -55,7 +55,7 @@ def main():
 
     name = input("Enter your name in the following format: {firstname.lastname}:  ")
     s_name = name.split(".")
-    print("Log is saved locally in: {" + log_path + "} and remotely in: www." + s_name[0] + "_" + s_name[1] + ".bossniffer.com")
+    print("Log is saved locally in: {" + log_path + "} and remotely in: http://" + s_name[0] + "_" + s_name[1] + ".bossniffer.com")
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     connection.bind(('', LISTEN_PORT))
     print("Boss server is up.")
