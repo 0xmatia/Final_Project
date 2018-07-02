@@ -54,6 +54,8 @@ def main():
             break
 
     name = input("Enter your name in the following format: {firstname.lastname}:  ")
+    while '.' not in name:
+        name = input("Try again. name format: {firstname.lastname}")
     s_name = name.split(".")
     print("Log is saved locally in: {" + log_path + "} and remotely in: http://" + s_name[0] + "_" + s_name[1] + ".bossniffer.com")
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -62,8 +64,9 @@ def main():
     while True:
         client_msg, client_addr = connection.recvfrom(100000)
         user = who_is_it(client_addr)
+        print(client_msg)
         if user != "-1":
-            print("Received report from {0}.\t".format(user), end="")
+            print("Received report from {0} --> ".format(user), end="")
             update_log(json.loads(client_msg.decode()), user)
             try:
                 upload_log()  # upload the log to the server
@@ -72,6 +75,7 @@ def main():
         else:
             print("Received report from unknown user. Stats won't be added to the log.\t", end="")
         print("\n")
+
 
 def who_is_it(address):
     """

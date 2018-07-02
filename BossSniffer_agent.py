@@ -2,6 +2,7 @@ import ctypes
 import json
 import socket
 import time
+import _thread
 
 import requests
 from scapy.layers.inet import *
@@ -15,7 +16,9 @@ MACHINE_IP = ""
 
 ip_locations = {}
 packet_list = []  # the list is being erased every NUM_OF_PACKETS times
+packet_list_temp = []
 programs = []
+
 
 # NOTE: dns requests cannot be traced back to the program asked for them, so "Unknown" will be the program
 
@@ -24,6 +27,7 @@ def main():
     if is_admin():
         global MACHINE_IP
         global packet_list
+        global packet_list_temp
         MACHINE_IP = get_ip()  # assign the machine ip
         init()
         # The first ctrl + c exit the sniffer, so we need to have exception if we try to exit the while loop
@@ -32,20 +36,29 @@ def main():
                 packet_list = []
                 sniff(lfilter=sniff_filter, prn=process_packet, count=NUM_OF_PACKETS)
                 print("Done.\nPerforming location lookup.")
-                get_ip_location()
-                print("Sending information to server")
-                try:
-                    send_to_boss()
-                except Exception:
-                    print("Failed to send. Trying again")
-                    send_to_boss()
-                    print("Couldn't reach server. Maybe offline. Program is being terminated")
-                print("Done. Proceeding to the next round\n")
-                time.sleep(2)
+                packet_list_temp = packet_list
+                _thread.start_new_thread(process_information, ())
+                time.sleep(0.5)  # so it will be possible to terminate the program
         except KeyboardInterrupt:
             print("Ctrl+C detected. Agent is being terminated")
     else:
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)  # run the program as admin
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None,
+                                            1)  # run the program as admin
+
+
+def process_information():
+    """
+    The function performs location lookup and sends packet_list_temp to the server. This function runs on a different thread
+    :return: None
+    """
+    get_ip_location()  # packet_list_temp is a copy of the original list. i am making a copy because the original list is being updated in another thread
+    print("Sending information to server")
+    try:
+        send_to_boss()
+    except Exception:
+        print("Couldn't reach server. Maybe offline. Program is being terminated")
+        quit()
+    print("Done. Proceeding to the next round\n")
 
 
 def sniff_filter(packet):
@@ -129,9 +142,11 @@ def init():
 def get_ip_location():
     """
     The function finds locations of given IP. if the lookup fails (mostly because of private ips in the same subnet) location replaced with unknown location string
+    :param temp_list: the latest packets list. each round it will be updated
+    :type temp_list: list
     :return: None
     """
-    for packet in packet_list:
+    for packet in packet_list_temp:
         if packet["ip"] in ip_locations.keys():  # if the ip is in the dictionary, we know its location
             packet["country"] = ip_locations[packet["ip"]]
         else:
@@ -152,7 +167,7 @@ def send_to_boss():
     """
     connection = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     print()
-    data = json.dumps(packet_list)
+    data = json.dumps(packet_list_temp)
     connection.sendto(data.encode(), (BOSS_IP, SERVER_PORT))
     connection.close()
 
@@ -191,7 +206,8 @@ def netstat(ip):
     :return: the name of the program if it was found and Unknown otherwise
     """
     for i in range(0, len(programs)):  # try to find the program in the existing list
-        if ip in programs[i] and ("TIME_WAIT" not in programs[i]) and ("SYN_WAIT" not in programs[i]):  # avoid time_wait connections
+        if ip in programs[i] and ("TIME_WAIT" not in programs[i]) and (
+                "SYN_WAIT" not in programs[i]):  # avoid time_wait connections
             return programs[i + 1][2:-1]
     # if we couldn't find a match, we will update the list with the netstat command and try again. if then it fails, we will return unknown
     update_prog_list()
