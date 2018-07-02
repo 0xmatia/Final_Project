@@ -64,7 +64,6 @@ def main():
     while True:
         client_msg, client_addr = connection.recvfrom(100000)
         user = who_is_it(client_addr)
-        print(client_msg)
         if user != "-1":
             print("Received report from {0} --> ".format(user), end="")
             update_log(json.loads(client_msg.decode()), user)
