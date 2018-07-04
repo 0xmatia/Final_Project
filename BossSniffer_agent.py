@@ -58,7 +58,6 @@ def process_information():
     except Exception:
         print("Couldn't reach server. Maybe offline. Program is being terminated")
         quit()
-    print("Done. Proceeding to the next round\n")
 
 
 def sniff_filter(packet):
@@ -135,7 +134,7 @@ def init():
         choice = input()
         if choice == "IP":
             NUM_OF_PACKETS = int(input("Enter new server IP: "))
-    print("All set! You can stop the sniffer anytime by pressing {0}! Press enter to start.".format("Ctrl+C"))
+    print("All set! You can stop the sniffer anytime by pressing {0} twice! Press enter to start.".format("Ctrl+C"))
     choice = input()
 
 

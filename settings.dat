@@ -1,2 +1,2 @@
-WORKERS = eran:192.168.0.1,yossi:192.168.1.1,dani:152.23.12.191,Elad:127.0.0.1,EladLaptop:192.168.1.18
+WORKERS = eran:192.168.0.1,yossi:192.168.1.1,dani:152.23.12.191,Elad:127.0.0.1,EladLaptop:192.168.1.18,Ofri:77.139.116.146
 BLACKLIST = 1.2.3.4:facebook,95.1.2.2:twitter,69.167.175.159:nissan.com,204.79.197.213:Dunno
